@@ -1,7 +1,7 @@
 """Base interface for chains combining documents."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -44,6 +44,14 @@ class BaseCombineDocumentsChain(Chain, BaseModel, ABC):
         """Combine documents into a single string."""
 
     def _call(self, inputs: Dict[str, Any]) -> Dict[str, str]:
+        docs = inputs[self.input_key]
+        # Other keys are assumed to be needed for LLM prediction
+        other_keys = {k: v for k, v in inputs.items() if k != self.input_key}
+        output, extra_return_dict = self.combine_docs(docs, **other_keys)
+        extra_return_dict[self.output_key] = output
+        return extra_return_dict
+
+    def _scall(self, inputs: Dict[str, Any]) -> Generator:
         docs = inputs[self.input_key]
         # Other keys are assumed to be needed for LLM prediction
         other_keys = {k: v for k, v in inputs.items() if k != self.input_key}
