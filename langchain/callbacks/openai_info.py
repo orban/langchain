@@ -2,7 +2,7 @@
 from typing import Any, Dict, List, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, LLMStreamingResult
 
 
 class OpenAICallbackHandler(BaseCallbackHandler):
@@ -21,13 +21,19 @@ class OpenAICallbackHandler(BaseCallbackHandler):
         """Print out the prompts."""
         pass
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+    def on_llm_end(
+        self, response: Union[LLMResult, LLMStreamingResult], **kwargs: Any
+    ) -> None:
         """Do nothing."""
         if response.llm_output is not None:
-            if "token_usage" in response.llm_output:
-                token_usage = response.llm_output["token_usage"]
-                if "total_tokens" in token_usage:
-                    self.total_tokens += token_usage["total_tokens"]
+            if isinstance(response, LLMStreamingResult):
+                # Token usage not available while streaming
+                pass
+            elif isinstance(response, LLMResult):
+                if "token_usage" in response.llm_output:
+                    token_usage = response.llm_output["token_usage"]
+                    if "total_tokens" in token_usage:
+                        self.total_tokens += token_usage["total_tokens"]
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

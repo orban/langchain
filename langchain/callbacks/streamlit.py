@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 import streamlit as st
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, LLMStreamingResult
 
 
 class StreamlitCallbackHandler(BaseCallbackHandler):
@@ -18,7 +18,9 @@ class StreamlitCallbackHandler(BaseCallbackHandler):
         for prompt in prompts:
             st.write(prompt)
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+    def on_llm_end(
+        self, response: Union[LLMResult, LLMStreamingResult], **kwargs: Any
+    ) -> None:
         """Do nothing."""
         pass
 

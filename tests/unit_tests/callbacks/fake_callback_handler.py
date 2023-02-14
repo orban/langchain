@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Union
 from pydantic import BaseModel
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, LLMStreamingResult
 
 
 class FakeCallbackHandler(BaseModel, BaseCallbackHandler):
@@ -55,7 +55,9 @@ class FakeCallbackHandler(BaseModel, BaseCallbackHandler):
         self.llm_starts += 1
         self.starts += 1
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+    def on_llm_end(
+        self, response: Union[LLMResult, LLMStreamingResult], **kwargs: Any
+    ) -> None:
         """Run when LLM ends running."""
         self.llm_ends += 1
         self.ends += 1

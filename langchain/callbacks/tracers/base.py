@@ -16,7 +16,7 @@ from langchain.callbacks.tracers.schemas import (
     TracerSession,
     TracerSessionCreate,
 )
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, LLMStreamingResult
 
 
 class TracerException(Exception):
@@ -129,7 +129,9 @@ class BaseTracer(BaseCallbackHandler, ABC):
         )
         self._start_trace(llm_run)
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+    def on_llm_end(
+        self, response: Union[LLMResult, LLMStreamingResult], **kwargs: Any
+    ) -> None:
         """End a trace for an LLM run."""
         if not self._stack or not isinstance(self._stack[-1], LLMRun):
             raise TracerException("No LLMRun found to be traced")
@@ -280,9 +282,7 @@ class Tracer(BaseTracer, ABC):
     def _session(self, value: TracerSession) -> None:
         """Set the tracing session."""
         if self._stack:
-            raise TracerException(
-                "Cannot set a session while a trace is being recorded"
-            )
+            raise TracerException("Cannot set a session while a trace is being recorded")
         self._tracer_session = value
 
 

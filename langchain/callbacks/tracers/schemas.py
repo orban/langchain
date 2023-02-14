@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from langchain.schema import LLMResult
+from langchain.schema import LLMResult, LLMStreamingResult
 
 
 class TracerSessionBase(BaseModel):
@@ -46,7 +46,7 @@ class LLMRun(BaseRun):
     """Class for LLMRun."""
 
     prompts: List[str]
-    response: Optional[LLMResult] = None
+    response: Optional[Union[LLMResult, LLMStreamingResult]] = None
 
 
 class ChainRun(BaseRun):

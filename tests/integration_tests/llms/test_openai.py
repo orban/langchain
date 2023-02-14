@@ -7,7 +7,7 @@ import pytest
 
 from langchain.llms.loading import load_llm
 from langchain.llms.openai import OpenAI
-from langchain.schema import LLMResult
+from langchain.schema import LLMResult, LLMStreamingResult
 
 
 def test_openai_call() -> None:
@@ -75,6 +75,13 @@ def test_openai_streaming_error() -> None:
     llm = OpenAI(best_of=2)
     with pytest.raises(ValueError):
         llm.stream("I'm Pickle Rick")
+
+
+def test_openai_streaming_generate() -> None:
+    """Test streaming generation from OpenAI."""
+    llm = OpenAI(best_of=1)
+    output = llm.sgenerate(["Hello, how are you?"])
+    assert isinstance(output, LLMStreamingResult)
 
 
 @pytest.mark.asyncio

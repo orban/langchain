@@ -8,7 +8,7 @@ from langchain.callbacks.base import (
     BaseCallbackManager,
     CallbackManager,
 )
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, LLMStreamingResult
 
 
 class Singleton:
@@ -41,7 +41,9 @@ class SharedCallbackManager(Singleton, BaseCallbackManager):
         with self._lock:
             self._callback_manager.on_llm_start(serialized, prompts, **kwargs)
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+    def on_llm_end(
+        self, response: Union[LLMResult, LLMStreamingResult], **kwargs: Any
+    ) -> None:
         """Run when LLM ends running."""
         with self._lock:
             self._callback_manager.on_llm_end(response, **kwargs)

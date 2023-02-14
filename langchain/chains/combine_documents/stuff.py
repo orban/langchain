@@ -83,8 +83,6 @@ class StuffDocumentsChain(BaseCombineDocumentsChain, BaseModel):
         """Stuff all documents into one prompt and pass to LLM."""
         inputs = self._get_inputs(docs, **kwargs)
         # Call predict on the LLM.
-        if self.streaming:
-            return self.llm_chain.spredict(**inputs), {}
         return self.llm_chain.predict(**inputs), {}
 
     @property

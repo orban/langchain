@@ -24,7 +24,7 @@ from tenacity import (
 )
 
 from langchain.llms.base import BaseLLM
-from langchain.schema import Generation, LLMResult
+from langchain.schema import Generation, LLMResult, LLMStreamingResult
 from langchain.utils import get_from_dict_or_env
 
 logger = logging.getLogger(__name__)
@@ -116,9 +116,7 @@ class BaseOpenAI(BaseLLM, BaseModel):
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that api key and python package exists in environment."""
-        openai_api_key = get_from_dict_or_env(
-            values, "openai_api_key", "OPENAI_API_KEY"
-        )
+        openai_api_key = get_from_dict_or_env(values, "openai_api_key", "OPENAI_API_KEY")
         try:
             import openai
 
@@ -219,6 +217,28 @@ class BaseOpenAI(BaseLLM, BaseModel):
             update_token_usage(_keys, response, token_usage)
         return self.create_llm_result(choices, prompts, token_usage)
 
+    def _sgenerate(
+        self, prompts: List[str], stop: Optional[List[str]] = None
+    ) -> LLMResult:
+        """Call out to OpenAI's streaming endpoint with k unique prompts."""
+        params = self._invocation_params
+        sub_prompts = self.get_sub_prompts(params, prompts, stop)
+        choices = []
+        token_usage: Dict[str, int] = {}
+        # Get the token usage from the response.
+        # Includes prompt, completion, and total tokens used.
+        _keys = {"completion_tokens", "prompt_tokens", "total_tokens"}
+        for _prompts in sub_prompts[:-1]:  # take all but the final prompt
+            # While streaming, tokens will be sent as data-only server-sent events as
+            # they become available. The subprompts are evaluated one at a time sync/async
+            # with the last prompt returning a generator of ServerSentEvent objects.
+            # TODO: support logging of token usage for streaming
+            response = self.completion_with_retry(prompt=_prompts, **params)
+            choices.extend(response["choices"])
+            update_token_usage(_keys, response, token_usage)
+            response = self.completion_with_retry(prompt=_prompts, **params)
+        return self.create_llm_result(choices, prompts, token_usage)
+
     async def _agenerate(
         self, prompts: List[str], stop: Optional[List[str]] = None
     ) -> LLMResult:
@@ -279,9 +299,7 @@ class BaseOpenAI(BaseLLM, BaseModel):
                     for choice in sub_choices
                 ]
             )
-        return LLMResult(
-            generations=generations, llm_output={"token_usage": token_usage}
-        )
+        return LLMResult(generations=generations, llm_output={"token_usage": token_usage})
 
     def stream(self, prompt: str, stop: Optional[List[str]] = None) -> Generator:
         """Call OpenAI with streaming flag and return the resulting generator.

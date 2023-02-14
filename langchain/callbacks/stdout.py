@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, LLMStreamingResult
 
 
 class StdOutCallbackHandler(BaseCallbackHandler):
@@ -19,7 +19,9 @@ class StdOutCallbackHandler(BaseCallbackHandler):
         """Print out the prompts."""
         pass
 
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+    def on_llm_end(
+        self, response: Union[LLMResult, LLMStreamingResult], **kwargs: Any
+    ) -> None:
         """Do nothing."""
         pass
 

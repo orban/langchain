@@ -111,7 +111,7 @@ class Chain(BaseModel, ABC):
     def _call(self, inputs: Dict[str, str]) -> Dict[str, str]:
         """Run the logic of this chain and return the output."""
 
-    def _scall(self, inputs: Dict[str, str]) -> Generator:
+    def _scall(self, inputs: Dict[str, str]) -> Dict[str, Generator]:
         """Run the logic of this chain and stream the output"""
         raise NotImplementedError("Streaming call not supported for this chain type.")
 
@@ -149,7 +149,7 @@ class Chain(BaseModel, ABC):
 
     def scall(
         self, inputs: Union[Dict[str, Any], Any], return_only_outputs: bool = False
-    ):
+    ) -> Dict[str, Generator]:
         """Run the logic of this chain and add to output if desired as a streaming response.
 
         Args:
@@ -221,11 +221,19 @@ class Chain(BaseModel, ABC):
     def prep_streaming_outputs(
         self,
         inputs: Dict[str, str],
-        outputs: Generator,
+        outputs: Dict[str, Generator],
         return_only_outputs: bool = False,
-    ) -> Generator:
+    ) -> Dict[str, Generator]:
         """Validate and prep outputs."""
-        return outputs
+        if return_only_outputs:
+            return outputs
+        else:
+            inputs_as_generator: Dict[str, Generator] = {}
+            for k, v in inputs.items():
+                g: Generator = (q for q in v)  # convert to generator
+                if g is not None:
+                    inputs_as_generator[k] = g
+            return {**inputs_as_generator, **outputs}
 
     def prep_inputs(self, inputs: Union[Dict[str, Any], Any]) -> Dict[str, str]:
         """Validate and prep inputs."""

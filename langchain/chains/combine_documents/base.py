@@ -51,7 +51,7 @@ class BaseCombineDocumentsChain(Chain, BaseModel, ABC):
         extra_return_dict[self.output_key] = output
         return extra_return_dict
 
-    def _scall(self, inputs: Dict[str, Any]) -> Generator:
+    def _scall(self, inputs: Dict[str, Any]) -> Dict[str, Generator]:
         docs = inputs[self.input_key]
         # Other keys are assumed to be needed for LLM prediction
         other_keys = {k: v for k, v in inputs.items() if k != self.input_key}

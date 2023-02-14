@@ -10,7 +10,7 @@ from pydantic import BaseModel, Extra, Field, validator
 import langchain
 from langchain.callbacks import get_callback_manager
 from langchain.callbacks.base import BaseCallbackManager
-from langchain.schema import Generation, LLMResult
+from langchain.schema import Generation, LLMResult, LLMStreamingResult
 
 
 def _get_verbosity() -> bool:
@@ -40,15 +40,18 @@ def update_cache(
     existing_prompts: Dict[int, List],
     llm_string: str,
     missing_prompt_idxs: List[int],
-    new_results: LLMResult,
+    new_results: Union[LLMResult, LLMStreamingResult],
     prompts: List[str],
 ) -> Optional[dict]:
     """Update the cache and get the LLM output."""
-    for i, result in enumerate(new_results.generations):
-        existing_prompts[missing_prompt_idxs[i]] = result
-        prompt = prompts[missing_prompt_idxs[i]]
-        if langchain.llm_cache is not None:
-            langchain.llm_cache.update(prompt, llm_string, result)
+    if isinstance(new_results, LLMResult):
+        for i, result in enumerate(new_results.generations):
+            existing_prompts[missing_prompt_idxs[i]] = result
+            prompt = prompts[missing_prompt_idxs[i]]
+            if langchain.llm_cache is not None:
+                langchain.llm_cache.update(prompt, llm_string, result)
+    if isinstance(new_results, LLMStreamingResult):
+        raise ValueError("Streaming not supported yet.")
     llm_output = new_results.llm_output
     return llm_output
 
@@ -95,14 +98,18 @@ class BaseLLM(BaseModel, ABC):
         """Run the LLM on the given prompts."""
 
     @abstractmethod
+    def _sgenerate(
+        self, prompts: List[str], stop: Optional[List[str]] = None
+    ) -> LLMStreamingResult:
+        """Run the LLM on the given prompts."""
+
+    @abstractmethod
     async def _agenerate(
         self, prompts: List[str], stop: Optional[List[str]] = None
     ) -> LLMResult:
         """Run the LLM on the given prompts."""
 
-    def generate(
-        self, prompts: List[str], stop: Optional[List[str]] = None
-    ) -> LLMResult:
+    def generate(self, prompts: List[str], stop: Optional[List[str]] = None) -> LLMResult:
         """Run the LLM on the given prompt and input."""
         # If string is passed in directly no errors will be raised but outputs will
         # not make sense.
@@ -156,7 +163,7 @@ class BaseLLM(BaseModel, ABC):
 
     def sgenerate(
         self, prompts: List[str], stop: Optional[List[str]] = None
-    ) -> Generator:
+    ) -> LLMStreamingResult:
         """Run the LLM on the given prompt and input. Returns a streaming response as a generator"""
         # If string is passed in directly no errors will be raised but outputs will
         # not make sense.
@@ -195,7 +202,7 @@ class BaseLLM(BaseModel, ABC):
                 {"name": self.__class__.__name__}, missing_prompts, verbose=self.verbose
             )
             try:
-                new_results = self._generate(missing_prompts, stop=stop)
+                new_results = self._sgenerate(missing_prompts, stop=stop)
             except (KeyboardInterrupt, Exception) as e:
                 self.callback_manager.on_llm_error(e, verbose=self.verbose)
                 raise e
@@ -206,7 +213,7 @@ class BaseLLM(BaseModel, ABC):
         else:
             llm_output = {}
         generations = [existing_prompts[i] for i in range(len(prompts))]
-        return LLMResult(generations=generations, llm_output=llm_output)
+        return LLMStreamingResult(generations=generations, llm_output=llm_output)
 
     async def agenerate(
         self, prompts: List[str], stop: Optional[List[str]] = None
@@ -355,6 +362,11 @@ class LLM(BaseLLM):
             text = self._call(prompt, stop=stop)
             generations.append([Generation(text=text)])
         return LLMResult(generations=generations)
+
+    def _sgenerate(
+        self, prompts: List[str], stop: Optional[List[str]] = None
+    ) -> LLMStreamingResult:
+        raise NotImplementedError("Streaming generators not implemented for this LLM.")
 
     async def _agenerate(
         self, prompts: List[str], stop: Optional[List[str]] = None
